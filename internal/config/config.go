@@ -10,12 +10,12 @@ import (
 
 // Config represents the main configuration structure
 type Config struct {
-	Log            LogConfig            `yaml:"log"`
-	Ports          PortConfig           `yaml:"ports"`
-	Services       ServiceConfig        `yaml:"services"`
-	ThreatIntel    ThreatIntelConfig   `yaml:"threatIntel"`
-	ML             MLConfig            `yaml:"ml"`
-	Notifications  NotificationConfig   `yaml:"notifications"`
+	Log           LogConfig          `yaml:"log"`
+	Ports         PortConfig         `yaml:"ports"`
+	Services      ServiceConfig      `yaml:"services"`
+	ThreatIntel   ThreatIntelConfig  `yaml:"threatIntel"`
+	ML            MLConfig           `yaml:"ml"`
+	Notifications NotificationConfig `yaml:"notifications"`
 }
 
 // LogConfig contains logging-related configuration
@@ -40,12 +40,12 @@ type PortConfig struct {
 type ServiceConfig struct {
 	EnableDynamic bool              `yaml:"enableDynamic"` // Enable dynamic service behavior
 	Templates     []ServiceTemplate `yaml:"templates"`     // Service templates
-	Timeout      time.Duration     `yaml:"timeout"`       // Connection timeout
+	Timeout       time.Duration     `yaml:"timeout"`       // Connection timeout
 }
 
 // ServiceTemplate defines a service emulation template
 type ServiceTemplate struct {
-	Name     string            `yaml:"name"`
+	Name     string           `yaml:"name"`
 	Port     int              `yaml:"port"`
 	Protocol string           `yaml:"protocol"`
 	Banner   string           `yaml:"banner"`
@@ -72,11 +72,11 @@ type ThreatIntelConfig struct {
 
 // VirusTotalConfig contains VirusTotal API configuration
 type VirusTotalConfig struct {
-	Enabled    bool          `yaml:"enabled"`
-	APIKey     string        `yaml:"apiKey"`
-	CacheTTL   time.Duration `yaml:"cacheTTL"`
-	RateLimit  int           `yaml:"rateLimit"` // Requests per minute
-	MinScore   float64       `yaml:"minScore"`  // Minimum score to trigger alert
+	Enabled   bool          `yaml:"enabled"`
+	APIKey    string        `yaml:"apiKey"`
+	CacheTTL  time.Duration `yaml:"cacheTTL"`
+	RateLimit int           `yaml:"rateLimit"` // Requests per minute
+	MinScore  float64       `yaml:"minScore"`  // Minimum score to trigger alert
 }
 
 // AnyRunConfig contains ANY.RUN API configuration
@@ -88,9 +88,18 @@ type AnyRunConfig struct {
 
 // InteractShConfig contains InteractSh configuration
 type InteractShConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	ServerID string `yaml:"serverId"`
-	Token    string `yaml:"token"`
+	Enabled             bool   `yaml:"enabled"`
+	ServerID            string `yaml:"serverId"`
+	Token               string `yaml:"token"`
+	ServerURL           string `yaml:"serverUrl"`
+	Authorization       string `yaml:"authorization"`
+	CacheSize           int    `yaml:"cacheSize"`
+	EvictionInterval    int    `yaml:"evictionInterval"`
+	PollInterval        int    `yaml:"pollInterval"`
+	NoInteractsh        bool   `yaml:"noInteractsh"`
+	NoVerification      bool   `yaml:"noVerification"`
+	NoMetrics           bool   `yaml:"noMetrics"`
+	DisableHTTPFallback bool   `yaml:"disableHttpFallback"`
 }
 
 // NucleiConfig contains Nuclei scanner configuration
@@ -99,7 +108,14 @@ type NucleiConfig struct {
 	Templates     []string `yaml:"templates"`
 	RateLimit     int      `yaml:"rateLimit"`
 	Concurrency   int      `yaml:"concurrency"`
-	RetaliateMode bool     `yaml:"retaliateMode"` // Enable counter-scanning
+	RetaliateMode bool     `yaml:"retaliateMode"`
+	Severity      string   `yaml:"severity"`
+	TemplatesPath string   `yaml:"templatesPath"`
+	Timeout       int      `yaml:"timeout"`
+	Threads       int      `yaml:"threads"`
+	BulkSize      int      `yaml:"bulkSize"`
+	Silent        bool     `yaml:"silent"`
+	NoColor       bool     `yaml:"noColor"`
 }
 
 // CanaryTokenConfig contains Canary Token configuration
@@ -111,10 +127,10 @@ type CanaryTokenConfig struct {
 
 // MLConfig contains machine learning configuration
 type MLConfig struct {
-	Enabled           bool    `yaml:"enabled"`
-	ModelPath         string  `yaml:"modelPath"`
-	UpdateInterval    int     `yaml:"updateInterval"`    // Hours
-	AnomalyThreshold float64 `yaml:"anomalyThreshold"`
+	Enabled          bool     `yaml:"enabled"`
+	ModelPath        string   `yaml:"modelPath"`
+	UpdateInterval   int      `yaml:"updateInterval"` // Hours
+	AnomalyThreshold float64  `yaml:"anomalyThreshold"`
 	Features         []string `yaml:"features"`
 }
 
@@ -140,9 +156,9 @@ type DiscordConfig struct {
 
 // TelegramConfig contains Telegram notification configuration
 type TelegramConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Token    string `yaml:"token"`
-	ChatID   string `yaml:"chatId"`
+	Enabled bool   `yaml:"enabled"`
+	Token   string `yaml:"token"`
+	ChatID  string `yaml:"chatId"`
 }
 
 // Load loads the configuration from file
@@ -177,7 +193,7 @@ func validateConfig(cfg *Config) error {
 	if cfg.Ports.MaxPorts < cfg.Ports.MinPorts {
 		return fmt.Errorf("maxPorts must be greater than or equal to minPorts")
 	}
-	
+
 	// Add more validation as needed
 	return nil
 }
