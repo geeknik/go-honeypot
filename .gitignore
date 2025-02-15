@@ -1,0 +1,40 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove these lines if you want to check in vendor/)
+vendor/
+
+# IDE directories
+.idea/
+.vscode/
+
+# Log files
+*.log
+logs/
+
+# Config files with sensitive data
+config.local.yaml
+*.env
+
+# ML model files
+*.model
+*.pkl
+
+# Cache directories
+.cache/
+__pycache__/
+
+# Build output
+build/
+dist/
+bin/

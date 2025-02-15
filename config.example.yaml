@@ -1,0 +1,75 @@
+# Go-Honeypot Example Configuration
+
+log:
+  level: info
+  path: logs/honeypot.log
+  maxSize: 100    # MB
+  maxBackups: 5
+  maxAge: 30      # days
+  compress: true
+
+ports:
+  minPorts: 3
+  maxPorts: 7
+  excludePorts: [22, 80, 443] # Production ports to avoid
+  portRanges:
+    - "1-1024"     # Well-known ports
+    - "1024-49151" # Registered ports
+
+services:
+  enableDynamic: true
+  timeout: 30s
+  templates:
+    - name: ssh
+      port: 22
+      protocol: tcp
+      banner: "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1"
+      prompts:
+        - "login: "
+        - "Password: "
+      commands:
+        "ls":
+          response: "Permission denied."
+          delayMin: 100
+          delayMax: 300
+          closeConn: false
+    - name: ftp
+      port: 21
+      protocol: tcp
+      banner: "220 FTP server ready"
+      prompts:
+        - "Name (localhost:anonymous): "
+      commands:
+        "USER":
+          response: "331 Please specify the password."
+          delayMin: 50
+          delayMax: 200
+          closeConn: false
+        "PASS":
+          response: "530 Login incorrect."
+          delayMin: 500
+          delayMax: 1000
+          closeConn: true
+
+plugins:
+  enable: true
+  directory: "./plugins"
+  configs:
+    neo4j:
+      uri: "bolt://localhost:7687"
+      username: "neo4j"
+      password: "your-password"
+      batch_size: 100
+      retry_attempts: 3
+      retry_delay: "5s"
+    
+    groq:
+      api_key: "your-groq-api-key"
+      model: "llama-3.3-70b-versatile"
+      rate_limit: 10  # requests per minute
+      cache_duration: "1h"
+      min_confidence: 0.7
+      max_tokens: 1000
+      temperature: 0.7
+      batch_analysis: true
+      batch_size: 5
