@@ -38,3 +38,4 @@ __pycache__/
 build/
 dist/
 bin/
+cmd/honeypot/honeypot

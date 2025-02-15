@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourusername/go-honeypot/internal/config"
-	"github.com/yourusername/go-honeypot/internal/honeypot"
-	"github.com/yourusername/go-honeypot/internal/logger"
+	"github.com/geeknik/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/honeypot"
+	"github.com/geeknik/go-honeypot/internal/logger"
 )
 
 func main() {
@@ -48,7 +48,7 @@ func main() {
 	// Wait for shutdown signal
 	<-sigChan
 	l.Info("Shutting down honeypot...")
-	
+
 	// Cancel context to initiate shutdown
 	cancel()
 
