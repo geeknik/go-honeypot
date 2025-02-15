@@ -102,20 +102,21 @@ type InteractShConfig struct {
 	DisableHTTPFallback bool   `yaml:"disableHttpFallback"`
 }
 
-// NucleiConfig contains Nuclei scanner configuration
+// NucleiConfig contains Nuclei configuration
 type NucleiConfig struct {
-	Enabled       bool     `yaml:"enabled"`
-	Templates     []string `yaml:"templates"`
-	RateLimit     int      `yaml:"rateLimit"`
-	Concurrency   int      `yaml:"concurrency"`
-	RetaliateMode bool     `yaml:"retaliateMode"`
-	Severity      string   `yaml:"severity"`
-	TemplatesPath string   `yaml:"templatesPath"`
-	Timeout       int      `yaml:"timeout"`
-	Threads       int      `yaml:"threads"`
-	BulkSize      int      `yaml:"bulkSize"`
-	Silent        bool     `yaml:"silent"`
-	NoColor       bool     `yaml:"noColor"`
+	Enabled                 bool     `yaml:"enabled"`
+	Templates               []string `yaml:"templates"`
+	RateLimit               int      `yaml:"rateLimit"`
+	TemplateThreads         int      `yaml:"templateThreads"`
+	HostThreads             int      `yaml:"hostThreads"`
+	HeadlessTemplateThreads int      `yaml:"headlessTemplateThreads"`
+	RetaliateMode           bool     `yaml:"retaliateMode"`
+	Severity                string   `yaml:"severity"`
+	TemplatesPath           string   `yaml:"templatesPath"`
+	Timeout                 int      `yaml:"timeout"`
+	BulkSize                int      `yaml:"bulkSize"`
+	Silent                  bool     `yaml:"silent"`
+	NoColor                 bool     `yaml:"noColor"`
 }
 
 // CanaryTokenConfig contains Canary Token configuration

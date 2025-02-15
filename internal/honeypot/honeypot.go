@@ -8,11 +8,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/go-honeypot/internal/config"
-	"github.com/yourusername/go-honeypot/internal/logger"
-	"github.com/yourusername/go-honeypot/internal/services"
-	"github.com/yourusername/go-honeypot/internal/threat"
+	"github.com/geeknik/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/logger"
+	"github.com/geeknik/go-honeypot/internal/services"
+	"github.com/geeknik/go-honeypot/internal/threat"
 )
+
+// ConnectionContext tracks connection behavior and metadata
+type ConnectionContext struct {
+	ID            string
+	StartTime     time.Time
+	LastActivity  time.Time
+	RemoteAddr    *net.TCPAddr
+	LocalPort     int
+	BytesReceived int64
+	BytesSent     int64
+	Commands      []string
+	Warnings      []string
+	ThreatScore   float64
+	Tags          []string
+	Metadata      map[string]interface{}
+}
 
 // Honeypot represents the main honeypot instance
 type Honeypot struct {
@@ -21,6 +37,7 @@ type Honeypot struct {
 	listeners   map[int]net.Listener
 	services    *services.Manager
 	threatIntel *threat.Intel
+	connections map[string]*ConnectionContext
 	mu          sync.RWMutex
 	active      bool
 }
@@ -43,6 +60,7 @@ func New(cfg *config.Config, logger logger.Logger) (*Honeypot, error) {
 		listeners:   make(map[int]net.Listener),
 		services:    svcManager,
 		threatIntel: threatIntel,
+		connections: make(map[string]*ConnectionContext),
 	}, nil
 }
 
@@ -143,33 +161,135 @@ func (h *Honeypot) handleConnection(ctx context.Context, conn net.Conn, port int
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
+	connID := fmt.Sprintf("%s:%d-%d", remoteAddr.IP.String(), remoteAddr.Port, port)
+
+	// Create connection context
+	connCtx := &ConnectionContext{
+		ID:         connID,
+		StartTime:  time.Now(),
+		RemoteAddr: remoteAddr,
+		LocalPort:  port,
+		Metadata:   make(map[string]interface{}),
+	}
+
+	h.mu.Lock()
+	h.connections[connID] = connCtx
+	h.mu.Unlock()
+
+	defer func() {
+		h.mu.Lock()
+		delete(h.connections, connID)
+		h.mu.Unlock()
+	}()
+
+	// Log initial connection with detailed metadata
 	h.logger.Info("New connection",
+		"connection_id", connID,
 		"port", port,
 		"remote_ip", remoteAddr.IP.String(),
 		"remote_port", remoteAddr.Port,
+		"start_time", connCtx.StartTime.Format(time.RFC3339),
+		"protocol", "tcp",
 	)
 
-	// Start threat intel analysis
+	// Start threat intel analysis in background
 	intelCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	go h.threatIntel.AnalyzeIP(intelCtx, remoteAddr.IP.String())
+	go func() {
+		result, err := h.threatIntel.AnalyzeIP(intelCtx, remoteAddr.IP.String())
+		if err != nil {
+			h.logger.Error("Threat intelligence analysis failed",
+				"connection_id", connID,
+				"error", err,
+			)
+			return
+		}
+
+		if result != nil {
+			h.mu.Lock()
+			if conn, exists := h.connections[connID]; exists {
+				conn.ThreatScore = result.Score
+				conn.Tags = append(conn.Tags, result.Tags...)
+				conn.Metadata["threat_intel"] = result
+			}
+			h.mu.Unlock()
+
+			h.logger.Info("Threat intelligence result",
+				"connection_id", connID,
+				"score", result.Score,
+				"categories", result.Categories,
+				"tags", result.Tags,
+			)
+		}
+	}()
 
 	// Get service handler for port
 	handler := h.services.GetHandler(port)
 	if handler == nil {
-		h.logger.Warn("No handler for port", "port", port)
+		h.logger.Warn("No handler for port",
+			"connection_id", connID,
+			"port", port,
+		)
 		return
 	}
 
+	// Create a wrapped connection to track bytes
+	wrappedConn := &connectionTracker{
+		Conn:    conn,
+		context: connCtx,
+	}
+
 	// Handle the connection with the appropriate service
-	if err := handler.Handle(ctx, conn); err != nil {
+	if err := handler.Handle(ctx, wrappedConn); err != nil {
 		h.logger.Error("Error handling connection",
+			"connection_id", connID,
 			"port", port,
 			"remote_ip", remoteAddr.IP.String(),
 			"error", err,
+			"duration", time.Since(connCtx.StartTime),
+			"bytes_received", connCtx.BytesReceived,
+			"bytes_sent", connCtx.BytesSent,
+			"commands", connCtx.Commands,
+			"warnings", connCtx.Warnings,
 		)
 	}
+
+	// Log connection summary
+	h.logger.Info("Connection closed",
+		"connection_id", connID,
+		"duration", time.Since(connCtx.StartTime),
+		"bytes_received", connCtx.BytesReceived,
+		"bytes_sent", connCtx.BytesSent,
+		"threat_score", connCtx.ThreatScore,
+		"tags", connCtx.Tags,
+		"commands", connCtx.Commands,
+		"warnings", connCtx.Warnings,
+	)
+}
+
+// connectionTracker wraps a net.Conn to track bytes sent/received
+type connectionTracker struct {
+	net.Conn
+	context *ConnectionContext
+}
+
+func (c *connectionTracker) Read(b []byte) (n int, err error) {
+	n, err = c.Conn.Read(b)
+	if n > 0 {
+		c.context.BytesReceived += int64(n)
+		c.context.LastActivity = time.Now()
+	}
+	return
+}
+
+func (c *connectionTracker) Write(b []byte) (n int, err error) {
+	n, err = c.Conn.Write(b)
+	if n > 0 {
+		c.context.BytesSent += int64(n)
+		c.context.LastActivity = time.Now()
+	}
+	return
 }
 
 func (h *Honeypot) selectPorts() ([]int, error) {

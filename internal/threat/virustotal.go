@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/config"
 )
 
 // VirusTotalProvider implements the Provider interface for VirusTotal
 type VirusTotalProvider struct {
-	cfg      config.VirusTotalConfig
-	client   *http.Client
-	baseURL  string
-	enabled  bool
+	cfg     config.VirusTotalConfig
+	client  *http.Client
+	baseURL string
+	enabled bool
 }
 
 // VirusTotalResponse represents the VirusTotal API response
@@ -25,13 +25,13 @@ type VirusTotalResponse struct {
 	Data struct {
 		Attributes struct {
 			LastAnalysisStats struct {
-				Harmless      int `json:"harmless"`
-				Malicious    int `json:"malicious"`
-				Suspicious   int `json:"suspicious"`
-				Undetected   int `json:"undetected"`
+				Harmless   int `json:"harmless"`
+				Malicious  int `json:"malicious"`
+				Suspicious int `json:"suspicious"`
+				Undetected int `json:"undetected"`
 			} `json:"last_analysis_stats"`
-			LastAnalysisDate  int64    `json:"last_analysis_date"`
-			NetworkLocation   string   `json:"network_location"`
+			LastAnalysisDate int64    `json:"last_analysis_date"`
+			NetworkLocation  string   `json:"network_location"`
 			Country          string   `json:"country"`
 			ASOwner          string   `json:"as_owner"`
 			Tags             []string `json:"tags"`
@@ -50,10 +50,10 @@ func NewVirusTotalProvider(cfg config.VirusTotalConfig) (*VirusTotalProvider, er
 	}
 
 	return &VirusTotalProvider{
-		cfg:      cfg,
-		client:   client,
-		baseURL:  "https://www.virustotal.com/api/v3",
-		enabled:  cfg.Enabled,
+		cfg:     cfg,
+		client:  client,
+		baseURL: "https://www.virustotal.com/api/v3",
+		enabled: cfg.Enabled,
 	}, nil
 }
 
@@ -70,7 +70,7 @@ func (v *VirusTotalProvider) IsEnabled() bool {
 // CheckIP queries the VirusTotal API for information about an IP
 func (v *VirusTotalProvider) CheckIP(ctx context.Context, ip string) (*Result, error) {
 	url := fmt.Sprintf("%s/ip_addresses/%s", v.baseURL, ip)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -112,14 +112,14 @@ func (v *VirusTotalProvider) CheckIP(ctx context.Context, ip string) (*Result, e
 	}
 
 	result := &Result{
-		Provider:    v.Name(),
-		IP:          ip,
-		Score:       score,
-		LastSeen:    time.Unix(vtResp.Data.Attributes.LastAnalysisDate, 0),
-		Country:     vtResp.Data.Attributes.Country,
-		ASN:         vtResp.Data.Attributes.NetworkLocation,
-		Tags:        tags,
-		RawData:     make(map[string]interface{}),
+		Provider: v.Name(),
+		IP:       ip,
+		Score:    score,
+		LastSeen: time.Unix(vtResp.Data.Attributes.LastAnalysisDate, 0),
+		Country:  vtResp.Data.Attributes.Country,
+		ASN:      vtResp.Data.Attributes.NetworkLocation,
+		Tags:     tags,
+		RawData:  make(map[string]interface{}),
 	}
 
 	// Add categories based on score

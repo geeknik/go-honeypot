@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/yourusername/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/config"
 )
 
 // Logger defines the interface for logging operations
@@ -59,9 +59,9 @@ func newLogger(cfg config.LogConfig) (Logger, error) {
 	// Configure log rotation
 	rotator := &lumberjack.Logger{
 		Filename:   cfg.Path,
-		MaxSize:    cfg.MaxSize,    // megabytes
+		MaxSize:    cfg.MaxSize, // megabytes
 		MaxBackups: cfg.MaxBackups,
-		MaxAge:     cfg.MaxAge,     // days
+		MaxAge:     cfg.MaxAge, // days
 		Compress:   cfg.Compress,
 	}
 

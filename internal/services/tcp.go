@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/config"
 )
 
 // TCPHandler implements the Handler interface for TCP services
@@ -18,12 +18,26 @@ type TCPHandler struct {
 	template  config.ServiceTemplate
 	info      ServiceInfo
 	responses map[string][]config.Reply
+	conn      net.Conn
+}
+
+// connectionTracker wraps a net.Conn to track connection data
+type connectionTracker struct {
+	net.Conn
+	context *ConnectionContext
+}
+
+// ConnectionContext tracks connection behavior and metadata
+type ConnectionContext struct {
+	Commands []string
+	Warnings []string
+	Metadata map[string]interface{}
 }
 
 // NewTCPHandler creates a new TCP service handler
 func NewTCPHandler(tmpl config.ServiceTemplate) (*TCPHandler, error) {
 	responses := make(map[string][]config.Reply)
-	
+
 	// Initialize responses with template commands
 	for cmd, reply := range tmpl.Commands {
 		responses[cmd] = []config.Reply{reply}
@@ -59,6 +73,18 @@ func (h *TCPHandler) Handle(ctx context.Context, conn net.Conn) error {
 
 	reader := bufio.NewReader(conn)
 	var sessionData []string
+	sessionStart := time.Now()
+	commandTiming := make([]time.Duration, 0)
+	commandPatterns := make(map[string]int)
+	suspiciousCommands := make([]string, 0)
+
+	// Track behavioral patterns
+	var (
+		rapidCommandCount    int
+		repeatedCommandCount int
+		lastCommandTime      time.Time
+		lastCommand          string
+	)
 
 	for {
 		select {
@@ -77,22 +103,51 @@ func (h *TCPHandler) Handle(ctx context.Context, conn net.Conn) error {
 			command, err := reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
+					// Analyze session before returning
+					h.analyzeSession(sessionData, commandTiming, commandPatterns, suspiciousCommands)
 					return nil
 				}
 				return fmt.Errorf("failed to read command: %w", err)
 			}
 
+			now := time.Now()
 			command = strings.TrimSpace(command)
 			sessionData = append(sessionData, command)
 
-			// Handle empty command
+			// Skip empty commands
 			if command == "" {
 				continue
 			}
 
+			// Update command timing and patterns
+			if !lastCommandTime.IsZero() {
+				timeSinceLastCommand := now.Sub(lastCommandTime)
+				commandTiming = append(commandTiming, timeSinceLastCommand)
+
+				// Check for rapid commands (less than 100ms apart)
+				if timeSinceLastCommand < 100*time.Millisecond {
+					rapidCommandCount++
+				}
+
+				// Check for repeated commands
+				if command == lastCommand {
+					repeatedCommandCount++
+				}
+			}
+			lastCommandTime = now
+			lastCommand = command
+
 			// Get base command (first word)
 			baseCmd := strings.Fields(command)[0]
 			baseCmd = strings.ToUpper(baseCmd)
+
+			// Update command patterns
+			commandPatterns[baseCmd]++
+
+			// Check for suspicious patterns
+			if h.isCommandSuspicious(command) {
+				suspiciousCommands = append(suspiciousCommands, command)
+			}
 
 			// Get response for command
 			response := h.getResponse(baseCmd, sessionData)
@@ -102,8 +157,31 @@ func (h *TCPHandler) Handle(ctx context.Context, conn net.Conn) error {
 				return fmt.Errorf("failed to send response: %w", err)
 			}
 
+			// Update connection context if available
+			if tracker, ok := conn.(*connectionTracker); ok {
+				tracker.context.Commands = append(tracker.context.Commands, command)
+
+				// Add warnings for suspicious behavior
+				if rapidCommandCount > 5 {
+					tracker.context.Warnings = append(tracker.context.Warnings, "Rapid command execution detected")
+				}
+				if repeatedCommandCount > 3 {
+					tracker.context.Warnings = append(tracker.context.Warnings, "Command repetition detected")
+				}
+				if len(suspiciousCommands) > 0 {
+					tracker.context.Warnings = append(tracker.context.Warnings, "Suspicious commands detected")
+				}
+
+				// Update metadata
+				tracker.context.Metadata["command_patterns"] = commandPatterns
+				tracker.context.Metadata["command_timing"] = commandTiming
+				tracker.context.Metadata["session_duration"] = time.Since(sessionStart)
+			}
+
 			// Close connection if specified in response
 			if response.CloseConn {
+				// Analyze session before closing
+				h.analyzeSession(sessionData, commandTiming, commandPatterns, suspiciousCommands)
 				return nil
 			}
 
@@ -139,7 +217,7 @@ func (h *TCPHandler) getResponse(cmd string, sessionData []string) config.Reply 
 func (h *TCPHandler) selectContextualResponse(responses []config.Reply, sessionData []string) config.Reply {
 	// Analyze session behavior to choose appropriate response
 	cmdCount := len(sessionData)
-	
+
 	// If this is a very active session, tend toward more restrictive responses
 	if cmdCount > 20 {
 		// Find the most restrictive response
@@ -196,4 +274,74 @@ func (h *TCPHandler) RemoveResponse(cmd string, index int) error {
 		return fmt.Errorf("invalid response index")
 	}
 	return fmt.Errorf("command not found")
+}
+
+// isCommandSuspicious checks for potentially malicious commands
+func (h *TCPHandler) isCommandSuspicious(command string) bool {
+	suspiciousPatterns := []string{
+		"wget", "curl", "nc", "netcat", "bash", "sh", "python",
+		"/dev/tcp", "/dev/udp", "base64",
+		"eval", "exec", "system", "cmd.exe",
+		"powershell", "download", "upload",
+	}
+
+	command = strings.ToLower(command)
+	for _, pattern := range suspiciousPatterns {
+		if strings.Contains(command, pattern) {
+			return true
+		}
+	}
+
+	// Check for common exploit patterns
+	exploitPatterns := []string{
+		"${", "$(", "`", // Command injection
+		"../", "/..", // Directory traversal
+		"SELECT", "UNION", "INSERT", // SQL injection
+		"<script>", "javascript:", // XSS
+	}
+
+	for _, pattern := range exploitPatterns {
+		if strings.Contains(command, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// analyzeSession analyzes the complete session for patterns
+func (h *TCPHandler) analyzeSession(
+	commands []string,
+	timing []time.Duration,
+	patterns map[string]int,
+	suspicious []string,
+) {
+	// Calculate timing statistics
+	var totalTime time.Duration
+	for _, t := range timing {
+		totalTime += t
+	}
+	avgTime := totalTime / time.Duration(len(timing))
+
+	// Analyze command frequency
+	mostFrequent := ""
+	maxCount := 0
+	for cmd, count := range patterns {
+		if count > maxCount {
+			maxCount = count
+			mostFrequent = cmd
+		}
+	}
+
+	// Log session analysis
+	if tracker, ok := h.conn.(connectionTracker); ok {
+		tracker.context.Metadata["session_analysis"] = map[string]interface{}{
+			"total_commands":    len(commands),
+			"unique_commands":   len(patterns),
+			"avg_command_time":  avgTime,
+			"most_frequent_cmd": mostFrequent,
+			"suspicious_count":  len(suspicious),
+			"command_variety":   float64(len(patterns)) / float64(len(commands)),
+		}
+	}
 }

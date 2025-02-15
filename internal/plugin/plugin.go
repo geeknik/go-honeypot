@@ -6,36 +6,36 @@ import (
 	"plugin"
 	"sync"
 
-	"github.com/yourusername/go-honeypot/internal/logger"
+	"github.com/geeknik/go-honeypot/internal/logger"
 )
 
 // Plugin defines the interface that all plugins must implement
 type Plugin interface {
 	// Initialize sets up the plugin
 	Initialize(ctx context.Context, config map[string]interface{}) error
-	
+
 	// Name returns the plugin's name
 	Name() string
-	
+
 	// Version returns the plugin's version
 	Version() string
-	
+
 	// Type returns the plugin type (output, analysis, processor)
 	Type() string
-	
+
 	// Process handles incoming data
 	Process(ctx context.Context, data interface{}) error
-	
+
 	// Shutdown cleans up plugin resources
 	Shutdown(ctx context.Context) error
 }
 
 // Manager handles plugin lifecycle and communication
 type Manager struct {
-	plugins    map[string]Plugin
-	config     map[string]map[string]interface{}
-	logger     logger.Logger
-	mu         sync.RWMutex
+	plugins map[string]Plugin
+	config  map[string]map[string]interface{}
+	logger  logger.Logger
+	mu      sync.RWMutex
 }
 
 // NewManager creates a new plugin manager
@@ -136,7 +136,7 @@ func (m *Manager) GetPlugin(name string) (Plugin, bool) {
 func (m *Manager) ListPlugins() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	var plugins []string
 	for name := range m.plugins {
 		plugins = append(plugins, name)

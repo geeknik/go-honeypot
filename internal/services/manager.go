@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/config"
 )
 
 // Handler interface defines methods that service handlers must implement
@@ -34,10 +34,10 @@ type Manager struct {
 
 // BehaviorPattern tracks attacker behavior patterns
 type BehaviorPattern struct {
-	Commands     map[string]int    // Command frequency
-	BytePatterns map[string]int    // Common byte patterns
-	TimingData   []int64          // Command timing data
-	IPAddresses  map[string]int    // IP frequency
+	Commands     map[string]int // Command frequency
+	BytePatterns map[string]int // Common byte patterns
+	TimingData   []int64        // Command timing data
+	IPAddresses  map[string]int // IP frequency
 	LastUpdated  int64
 }
 
@@ -160,7 +160,7 @@ func (m *Manager) AnalyzePatterns() map[string][]string {
 		// Check for command frequency anomalies
 		for cmd, freq := range pattern.Commands {
 			if freq > 100 {
-				serviceAnomalies = append(serviceAnomalies, 
+				serviceAnomalies = append(serviceAnomalies,
 					fmt.Sprintf("High frequency of command: %s (%d times)", cmd, freq))
 			}
 		}

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourusername/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/config"
 )
 
 // AnyRunProvider implements the Provider interface for ANY.RUN
@@ -118,15 +118,15 @@ func (a *AnyRunProvider) CheckIP(ctx context.Context, ip string) (*Result, error
 
 	// Create threat intelligence result
 	result := &Result{
-		Provider:    a.Name(),
-		IP:          ip,
-		Score:       ipInfo.Reputation,
-		Categories:  categories,
-		LastSeen:    lastSeen,
-		Country:     ipInfo.Country,
-		ASN:         ipInfo.ASN,
-		Tags:        ipInfo.Tags,
-		RawData:     make(map[string]interface{}),
+		Provider:   a.Name(),
+		IP:         ip,
+		Score:      ipInfo.Reputation,
+		Categories: categories,
+		LastSeen:   lastSeen,
+		Country:    ipInfo.Country,
+		ASN:        ipInfo.ASN,
+		Tags:       ipInfo.Tags,
+		RawData:    make(map[string]interface{}),
 	}
 
 	// Store raw data for correlation

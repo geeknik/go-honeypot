@@ -13,40 +13,25 @@ import (
 // NucleiProvider implements the Provider interface for Nuclei
 type NucleiProvider struct {
 	cfg     config.NucleiConfig
-	engine  *nuclei.ThreadSafeNucleiEngine
+	engine  *nuclei.NucleiEngine
 	enabled bool
 }
 
 // NewNucleiProvider creates a new Nuclei provider
 func NewNucleiProvider(cfg config.NucleiConfig) (*NucleiProvider, error) {
 	// Create nuclei engine with options
-	engine, err := nuclei.NewThreadSafeNucleiEngine(
+	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{
-			Tags:          cfg.Templates,
-			Severity:      "critical,high",
-			ProtocolTypes: "http,dns,tcp",
-		}),
-		nuclei.WithConcurrency(nuclei.Concurrency{
-			TemplateThreads: cfg.Concurrency,
-		}),
-		nuclei.WithNetworkConfig(nuclei.NetworkConfig{
-			Retries:      2,
-			MaxHostError: 3,
-			Timeout:      10,
+			Severity: cfg.Severity,
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Nuclei engine: %w", err)
-	}
-
-	// Load all templates
-	if err := engine.GlobalLoadAllTemplates(); err != nil {
-		return nil, fmt.Errorf("failed to load Nuclei templates: %w", err)
+		return nil, fmt.Errorf("failed to create Nuclei engine: %w", err)
 	}
 
 	return &NucleiProvider{
 		cfg:     cfg,
-		engine:  engine,
+		engine:  ne,
 		enabled: cfg.Enabled,
 	}, nil
 }
@@ -78,22 +63,25 @@ func (n *NucleiProvider) CheckIP(ctx context.Context, ip string) (*Result, error
 	}
 
 	// Create a channel to collect findings
-	findings := make(chan string, 100)
-
-	// Set up callback to process results
-	n.engine.GlobalResultCallback(func(event *output.ResultEvent) {
-		if event != nil {
-			findings <- event.Info.Name
-			result.Score += 0.1 // Increment score for each finding
-			result.Categories = append(result.Categories, event.Info.SeverityHolder.Severity)
-			result.Tags = append(result.Tags, event.Info.Tags...)
-			result.RawData[event.Info.Name] = event.Info
-		}
-	})
+	findings := make(chan *output.ResultEvent, 100)
 
 	// Execute scan
 	target := fmt.Sprintf("http://%s", ip) // Also try https if needed
-	if err := n.engine.ExecuteNucleiWithOpts([]string{target}); err != nil {
+	n.engine.LoadTargets([]string{target}, false)
+	if err := n.engine.ExecuteWithCallback(func(event *output.ResultEvent) {
+		if event != nil {
+			findings <- event
+			result.Score += 0.1 // Increment score for each finding
+
+			// Add severity as category
+			result.Categories = append(result.Categories, event.Info.SeverityHolder.Severity.String())
+
+			// Add template name as a tag
+			result.Tags = append(result.Tags, event.Info.Name)
+
+			result.RawData[event.Info.Name] = event.Info
+		}
+	}); err != nil {
 		return result, fmt.Errorf("nuclei scan failed: %w", err)
 	}
 

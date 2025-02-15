@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/go-honeypot/internal/config"
+	"github.com/geeknik/go-honeypot/internal/config"
 	"golang.org/x/time/rate"
 )
 
@@ -29,15 +29,15 @@ type Provider interface {
 
 // Result represents a threat intelligence lookup result
 type Result struct {
-	Provider    string
-	IP          string
-	Score       float64
-	Categories  []string
-	LastSeen    time.Time
-	Country     string
-	ASN         string
-	Tags        []string
-	RawData     map[string]interface{}
+	Provider   string
+	IP         string
+	Score      float64
+	Categories []string
+	LastSeen   time.Time
+	Country    string
+	ASN        string
+	Tags       []string
+	RawData    map[string]interface{}
 }
 
 // Cache implements a thread-safe cache with TTL
