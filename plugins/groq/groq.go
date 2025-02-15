@@ -12,17 +12,27 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Plugin exports the Groq plugin
-var Plugin = &GroqPlugin{}
+// Plugin interface defines the required methods for plugins
+type Plugin interface {
+	Initialize(ctx context.Context, config map[string]interface{}) error
+	Process(ctx context.Context, data interface{}) error
+	Shutdown(ctx context.Context) error
+	Name() string
+	Version() string
+	Type() string
+}
+
+// PluginInstance exports the Groq plugin
+var PluginInstance Plugin = &GroqPlugin{}
 
 // GroqPlugin implements the plugin interface for Groq API analysis
 type GroqPlugin struct {
-	config   map[string]interface{}
-	client   *http.Client
-	limiter  *rate.Limiter
-	baseURL  string
-	apiKey   string
-	mu       sync.RWMutex
+	config  map[string]interface{}
+	client  *http.Client
+	limiter *rate.Limiter
+	baseURL string
+	apiKey  string
+	mu      sync.RWMutex
 }
 
 // GroqRequest represents a request to the Groq API
@@ -61,11 +71,11 @@ type GroqResponse struct {
 
 // ThreatAnalysis contains analyzed threat data
 type ThreatAnalysis struct {
-	ThreatLevel    string   `json:"threat_level"`
-	Intentions     []string `json:"intentions"`
-	Techniques     []string `json:"techniques"`
+	ThreatLevel     string   `json:"threat_level"`
+	Intentions      []string `json:"intentions"`
+	Techniques      []string `json:"techniques"`
 	Recommendations []string `json:"recommendations"`
-	RawAnalysis    string   `json:"raw_analysis"`
+	RawAnalysis     string   `json:"raw_analysis"`
 }
 
 // Initialize sets up the Groq client
@@ -142,10 +152,10 @@ Protocol: %v
 Payload: %v
 Timestamp: %v
 Previous Attacks: %v
-`, 
-		event["ip"], 
-		event["country"], 
-		event["asn"], 
+`,
+		event["ip"],
+		event["country"],
+		event["asn"],
 		event["port"],
 		event["protocol"],
 		event["payload"],
@@ -222,12 +232,12 @@ func (p *GroqPlugin) updateNeo4jGraph(ctx context.Context, neo4jPlugin Plugin, e
 	}
 
 	graphData := map[string]interface{}{
-		"ip":             event["ip"],
-		"threat_level":   analysis.ThreatLevel,
-		"intentions":     analysis.Intentions,
-		"techniques":     analysis.Techniques,
-		"analysis":       analysis.RawAnalysis,
-		"analyzed_at":    time.Now().Unix(),
+		"ip":            event["ip"],
+		"threat_level":  analysis.ThreatLevel,
+		"intentions":    analysis.Intentions,
+		"techniques":    analysis.Techniques,
+		"analysis":      analysis.RawAnalysis,
+		"analyzed_at":   time.Now().Unix(),
 		"model_version": "llama-3.3-70b-versatile",
 	}
 
@@ -242,4 +252,8 @@ func (p *GroqPlugin) Shutdown(ctx context.Context) error {
 	// Cancel any pending requests
 	p.client.CloseIdleConnections()
 	return nil
+}
+
+func main() {
+	// This is required for Go plugins but not used
 }

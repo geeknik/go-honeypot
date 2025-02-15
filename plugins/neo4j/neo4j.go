@@ -9,8 +9,15 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-// Plugin exports the Neo4j plugin
-var Plugin = &Neo4jPlugin{}
+// Plugin defines the interface that all plugins must implement
+type Plugin interface {
+	Initialize(ctx context.Context, config map[string]interface{}) error
+	Name() string
+	Version() string
+	Type() string
+	Process(ctx context.Context, data interface{}) error
+	Shutdown(ctx context.Context) error
+}
 
 // Neo4jPlugin implements the plugin interface for Neo4j output
 type Neo4jPlugin struct {
@@ -46,7 +53,7 @@ func (p *Neo4jPlugin) Initialize(ctx context.Context, config map[string]interfac
 	}
 
 	// Verify connectivity
-	if err := driver.VerifyConnectivity(ctx); err != nil {
+	if err := driver.VerifyConnectivity(); err != nil {
 		return fmt.Errorf("failed to connect to neo4j: %w", err)
 	}
 
@@ -74,8 +81,8 @@ func (p *Neo4jPlugin) Process(ctx context.Context, data interface{}) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	session := p.driver.NewSession(ctx, neo4j.SessionConfig{})
-	defer session.Close(ctx)
+	session := p.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
 
 	// Convert data to appropriate type
 	event, ok := data.(map[string]interface{})
@@ -84,7 +91,7 @@ func (p *Neo4jPlugin) Process(ctx context.Context, data interface{}) error {
 	}
 
 	// Create IP node and relationships
-	result, err := session.Run(ctx,
+	result, err := session.Run(
 		`
 		MERGE (ip:IP {address: $ip})
 		ON CREATE SET 
@@ -138,3 +145,6 @@ func (p *Neo4jPlugin) Shutdown(ctx context.Context) error {
 	}
 	return nil
 }
+
+// Export the plugin symbol
+var Export Plugin = &Neo4jPlugin{}

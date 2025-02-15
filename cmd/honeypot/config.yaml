@@ -1,0 +1,100 @@
+# Honeypot Configuration
+
+# Port configuration
+ports:
+  minPorts: 1  # Minimum number of ports to use
+  maxPorts: 3  # Maximum number of ports to use
+  portRanges:
+    - "1024-65535"  # Range of ports to choose from
+  excludePorts:  # Ports to exclude from selection
+    - 3306  # MySQL
+    - 5432  # PostgreSQL
+    - 27017 # MongoDB
+    - 6379  # Redis
+    - 22    # SSH (real)
+    - 80    # HTTP (real)
+    - 443   # HTTPS (real)
+
+# Service configuration
+services:
+  enableDynamic: true
+  timeout: 300s
+  templates:
+    - name: "SSH"
+      protocol: "tcp"
+      port: 2222
+      banner: "SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.5"
+      prompts:
+        - "login: "
+        - "Password: "
+      commands:
+        "HELP":
+          response: "Available commands: HELP, VERSION, QUIT"
+          delayMin: 100
+          delayMax: 300
+          closeConn: false
+        "VERSION":
+          response: "SSH-2.0-OpenSSH_8.2p1"
+          delayMin: 50
+          delayMax: 150
+          closeConn: false
+        "QUIT":
+          response: "Goodbye"
+          delayMin: 10
+          delayMax: 50
+          closeConn: true
+
+# Logging configuration
+log:
+  path: "logs/honeypot.log"
+  level: "info"
+  maxSize: 100    # MB
+  maxBackups: 3
+  maxAge: 28      # days
+  compress: true
+
+# Threat Intelligence configuration
+threatIntel:
+  virusTotal:
+    enabled: false
+    apiKey: ""
+    rateLimit: 4  # requests per minute
+    minScore: 0.3
+    cacheTTL: 3600s
+
+  anyRun:
+    enabled: false
+    apiKey: ""
+    rateLimit: 10
+
+  nuclei:
+    enabled: true
+    templates:
+      - "cves"
+      - "vulnerabilities"
+      - "exposures"
+    concurrency: 10
+    rateLimit: 10
+    severity: "critical,high"
+    timeout: 30
+    headlessTemplateThreads: 10
+    templateThreads: 10
+    hostThreads: 10
+
+  interactSh:
+    enabled: false
+    serverUrl: ""
+    token: ""
+
+# Plugin configuration
+plugins:
+  neo4j:
+    enabled: false
+    uri: "bolt://localhost:7687"
+    username: "neo4j"
+    password: "password"
+
+  groq:
+    enabled: false
+    apiKey: ""
+    rateLimit: 10 
