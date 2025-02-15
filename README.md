@@ -1,35 +1,51 @@
 # Go-Honeypot
 
-A sophisticated honeypot implementation in Go with dynamic service emulation, threat intelligence integration, and machine learning capabilities.
+A sophisticated honeypot implementation in Go with dynamic service emulation, threat intelligence integration, and machine learning capabilities. Designed for high-interaction threat research and attack pattern analysis.
 
 ## Features
 
-- Random prime number port selection from top 1000 ports
-- Dynamic service emulation based on attack behavior
-- Threat intelligence integration:
-  - ANY.RUN analysis
-  - VirusTotal IP reputation
-  - Canary Token integration
-  - InteractSh callbacks
-  - Automated Nuclei scanning for counter-intelligence
-- Advanced logging and attack pattern analysis
-- Machine learning for attack pattern detection
-- Real-time attacker profiling
+- **Dynamic Service Emulation**
+  - TCP/UDP protocol support
+  - Configurable service templates
+  - Behavior-based response patterns
+  - Automatic port selection from top 1000 ports
+
+- **Threat Intelligence Integration**
+  - VirusTotal IP reputation scanning
+  - ANY.RUN dynamic analysis
+  - Nuclei-powered vulnerability scanning
+  - InteractSh for OAST detection
+  - Canary Token tracking
+  - Multi-source correlation engine
+
+- **Advanced Security Features**
+  - Real-time attack pattern analysis
+  - Machine learning-based anomaly detection
+  - Behavioral profiling
+  - Rate limiting and DDoS protection
+  - Secure credential handling
+
+- **Monitoring & Analysis**
+  - Structured logging with rotation
+  - Attack timeline tracking
+  - Pattern recognition
+  - Real-time metrics
+  - Multi-channel notifications
 
 ## Prerequisites
 
 - Go 1.21 or higher
-- Docker (for running threat intel services)
+- Docker (optional, for isolated execution)
 - API keys for:
   - VirusTotal
   - ANY.RUN
-  - Additional services as needed
+  - Additional services as configured
 
-## Installation
+## Quick Start
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/go-honeypot
+git clone https://github.com/geeknik/go-honeypot
 cd go-honeypot
 ```
 
@@ -38,77 +54,122 @@ cd go-honeypot
 go mod download
 ```
 
-3. Copy and configure the example environment file:
+3. Configure the honeypot:
 ```bash
 cp config.example.yaml config.local.yaml
-# Edit config.local.yaml with your API keys and settings
+# Edit config.local.yaml with your settings
 ```
 
-4. Build the project:
+4. Build and run:
 ```bash
-make build
-```
-
-## Usage
-
-1. Start the honeypot:
-```bash
-./bin/honeypot
-```
-
-2. Monitor logs (in a different terminal):
-```bash
-tail -f logs/honeypot.log
+go build ./cmd/honeypot
+./honeypot
 ```
 
 ## Configuration
 
-The honeypot can be configured through `config.local.yaml`. Key settings include:
+The `config.local.yaml` file supports extensive customization:
 
-- Port selection criteria
-- Service emulation parameters
-- Threat intel API configurations
-- Logging settings
-- ML model parameters
+```yaml
+log:
+  level: info
+  path: logs/honeypot.log
+  maxSize: 100    # MB
+  maxBackups: 3
+  compress: true
 
-See `config.example.yaml` for a complete list of options.
+ports:
+  minPorts: 5
+  maxPorts: 20
+  excludePorts: [22, 80, 443]
+
+services:
+  enableDynamic: true
+  timeout: 300s    # Connection timeout
+
+threatIntel:
+  virusTotal:
+    enabled: true
+    apiKey: "your-key"
+    cacheTTL: 24h
+    rateLimit: 4    # Requests per minute
+
+  nuclei:
+    enabled: true
+    templates: ["cve", "exposure", "vulnerability"]
+    concurrency: 10
+    severity: "critical,high"
+
+  interactSh:
+    enabled: true
+    serverUrl: "https://interact.sh"
+    token: "your-token"
+```
 
 ## Architecture
 
-The honeypot employs a modular architecture:
+### Core Components
 
-1. Core Service
-   - Port listener management
-   - Connection handling
-   - Service emulation
+1. **Service Manager**
+   - Dynamic port allocation
+   - Protocol handlers (TCP/UDP)
+   - Connection management
+   - Rate limiting
 
-2. Threat Intelligence
-   - API integrations
-   - Result caching
-   - Correlation engine
+2. **Threat Intelligence**
+   - Multi-provider integration
+   - Result correlation
+   - Caching and rate limiting
+   - Threat scoring
 
-3. Machine Learning
+3. **Analysis Engine**
    - Pattern detection
-   - Anomaly identification
-   - Attacker profiling
+   - Behavioral analysis
+   - ML-based anomaly detection
+   - Attack classification
 
-4. Logging
-   - Structured event logging
-   - Attack timeline tracking
-   - Intel correlation
+4. **Monitoring**
+   - Structured logging
+   - Metrics collection
+   - Alert generation
+   - Performance monitoring
 
 ## Security Considerations
 
-- Run in an isolated environment
-- Use minimal privileges
+### Deployment
+
+- Run in an isolated network segment
+- Use dedicated hardware/VM
+- Implement proper firewall rules
 - Monitor resource usage
-- Regular security audits
-- Proper API key management
-- Network isolation
+
+### Access Control
+
+- Use minimal privileges
+- Secure API key storage
+- Regular credential rotation
+- Access logging
+
+### Data Handling
+
+- Sanitize all inputs
+- Encrypt sensitive data
+- Regular data cleanup
+- Secure logging practices
 
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure your PR:
+- Follows the existing code style
+- Includes appropriate tests
+- Updates documentation
+- Describes the changes clearly
 
 ## License
 
@@ -116,7 +177,11 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 ## Acknowledgments
 
-- Project Discovery for [Nuclei](https://github.com/projectdiscovery/nuclei) and [InteractSh](https://github.com/projectdiscovery/interactsh)
-- [Canary Tokens](https://canarytokens.org/) for counter-intelligence
+- [Project Discovery](https://projectdiscovery.io/) for Nuclei and InteractSh
 - [VirusTotal](https://www.virustotal.com/) for threat intelligence
 - [ANY.RUN](https://any.run/) for dynamic analysis
+- [Canary Tokens](https://canarytokens.org/) for threat detection
+
+## Disclaimer
+
+This software is for research and defensive purposes only. Users are responsible for complying with applicable laws and regulations. The authors are not responsible for any misuse or damage caused by this program.
